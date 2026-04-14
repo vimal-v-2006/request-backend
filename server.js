@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_FILE = path.join(__dirname, 'requests.json');
-const PORT = process.env.REQUEST_BACKEND_PORT || 4100;
+const PORT = process.env.PORT || 4100;
 
 function readRequests() {
   if (!fs.existsSync(DATA_FILE)) return [];
