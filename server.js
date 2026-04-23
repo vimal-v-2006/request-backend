@@ -31,6 +31,7 @@ function nowIso() {
 function normalizeIncomingRequest(payload) {
   return {
     ...payload,
+    country: typeof payload.country === 'string' && payload.country.trim() ? payload.country.trim() : '',
     submittedDate: payload.submittedDate || nowIso(),
     paymentScreenshot: payload.paymentScreenshot || '',
     paymentScreenshotDataUrl: payload.paymentScreenshotDataUrl || '',
@@ -77,9 +78,11 @@ async function updateRequest(id, payload) {
   const current = await requestsCollection.findOne({ id });
   if (!current) return null;
 
+  const nextCountry = typeof payload.country === 'string' ? payload.country.trim() : current.country;
   const updated = {
     ...current,
     ...payload,
+    country: nextCountry || '',
     history: [
       ...(current.history || []),
       {
@@ -94,6 +97,11 @@ async function updateRequest(id, payload) {
 
   await requestsCollection.updateOne({ id }, { $set: updated });
   return sanitizeRequest(updated);
+}
+
+async function deleteRequest(id) {
+  const result = await requestsCollection.deleteOne({ id });
+  return result.deletedCount > 0;
 }
 
 function truncate(value, maxLength = 240) {
@@ -270,6 +278,23 @@ const server = http.createServer((req, res) => {
         json(res, 400, { ok: false, error: 'Invalid request payload' });
       }
     });
+    return;
+  }
+
+  if (match && req.method === 'DELETE') {
+    const id = match[1];
+    deleteRequest(id)
+      .then((deleted) => {
+        if (!deleted) {
+          return json(res, 404, { ok: false, error: 'Request not found' });
+        }
+
+        json(res, 200, { ok: true });
+      })
+      .catch((error) => {
+        console.error('Failed to delete request:', error);
+        json(res, 500, { ok: false, error: 'Failed to delete request' });
+      });
     return;
   }
 
